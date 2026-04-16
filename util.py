@@ -149,3 +149,56 @@ def experiment1(img_name, dist, dist_map, dataset_path, contrique):
     plt.tight_layout()
     plt.show()
     return 
+
+def experiment3_gradCam(top_k_df, dataset_path, contrique, title, isDistortion=False):
+    cam_generator = FeatureGradCAM(contrique)
+    rows = 2
+
+    fig, axes = plt.subplots(rows, len(top_k_df), figsize=(22, 7))
+    axes = axes.flatten()
+
+    for idx, (_, row) in enumerate(top_k_df.iterrows()):
+        img_path = os.path.join(dataset_path, row['image_name'])
+        img, img_heatmap = cam_generator.generate(img_path)
+        gradCam = gradcam_output(img, img_heatmap)
+        # score = contrique.predict(img)
+
+        axes[(idx * 2)].imshow(img)
+        axes[(idx * 2)].set_title(f"Error: {row['raw_error']:.2f}" if not isDistortion else f"Rad/Qual: {row['strength']}, Err: {row['raw_error']:.2f}")
+        axes[(idx * 2)].axis('off')
+        axes[(idx * 2) + 1].imshow(gradCam)
+        axes[(idx * 2) + 1].set_title("Grad_Cam")
+        axes[(idx * 2) + 1].axis('off')
+    
+    plt.suptitle(title, fontsize=20, fontweight='bold')
+    plt.tight_layout()
+    plt.show()
+    return 
+
+def compare_distortion_exp3(img_name, blur_df, jpeg_df):
+    plt.figure(figsize=(12, 5))
+
+    # Plot Blur Sensitivity
+    plt.subplot(1, 2, 1)
+    radii, new_scores, baseline_score = blur_df.loc[blur_df['image_name'] == img_name, ['strength', 'new_score', 'baseline_score']].values.T.tolist()
+    plt.plot(radii, new_scores, marker='o', label='CONTRIQUE Score')
+    plt.axhline(y=baseline_score[0], color='r', linestyle='--', label='Baseline')
+    plt.xlabel('Blur Radius')
+    plt.ylabel('Predicted Score')
+    plt.title('Sensitivity to Gaussian Blur')
+    plt.legend()
+
+    # Plot JPEG Sensitivity
+    plt.subplot(1, 2, 2)
+    qualities, new_scores, baseline_score = jpeg_df.loc[jpeg_df['image_name'] == img_name, ['strength', 'new_score', 'baseline_score']].values.T.tolist()
+    plt.plot(qualities, new_scores, marker='o', color='green', label='CONTRIQUE Score')
+    plt.axhline(y=baseline_score[0], color='r', linestyle='--', label='Baseline')
+    plt.gca().invert_xaxis() # Lower quality = more distortion
+    plt.xlabel('JPEG Quality Level')
+    plt.ylabel('Predicted Score')
+    plt.title('Sensitivity to JPEG Compression')
+    plt.legend()
+
+    plt.suptitle(f"Distortion Sensitivity for {img_name}")
+    plt.tight_layout()
+    plt.show()
