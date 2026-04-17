@@ -29,8 +29,9 @@ class FeatureGradCAM:
         # grad_output is a tuple, we want the first element
         self.gradients = grad_output[0]
 
-    def generate(self, image_path):
-        image = Image.open(image_path).convert('RGB')
+    def generate(self, image_path = None, image = None, isImage = False):
+        if not isImage:
+            image = Image.open(image_path).convert('RGB')
         
         # Use your wrapper's built-in multiscale prep, ensuring gradients are tracked
         img_t, img_2_t = self.evaluator._prepare_multiscale_tensors(image, requires_grad=True)
@@ -229,3 +230,70 @@ class KonIQDataset(Dataset):
         img_2_t = self.transform(image_2)
         
         return img_t, img_2_t, true_score, img_name
+    
+def apply_blur(img, kernel_size=5):
+    return cv2.GaussianBlur(img, (kernel_size, kernel_size), 0)
+
+def apply_jpeg_compression(img, quality=50):
+    encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), quality]
+    _, encimg = cv2.imencode('.jpg', img, encode_param)
+    return cv2.imdecode(encimg, 1)
+
+def apply_gaussian_noise(img, sigma=10):
+    noise = np.random.normal(0, sigma, img.shape).astype(np.float32)
+    noisy = img.astype(np.float32) + noise
+    return np.clip(noisy, 0, 255).astype(np.uint8)
+
+def apply_distortion_pipeline(img, pipeline_config):
+    out = img.copy()
+    for step in pipeline_config:
+        if step["type"] == "blur":
+            out = apply_blur(out, **step["params"])
+        elif step["type"] == "jpeg":
+            out = apply_jpeg_compression(out, **step["params"])
+        elif step["type"] == "noise":
+            out = apply_gaussian_noise(out, **step["params"])
+        else:
+            raise ValueError(f"Unknown distortion: {step['type']}")
+    return out
+
+def generate_distortion_levels(img_name, dataset_path, level_configs):
+    result = []
+    img_path = os.path.join(dataset_path, 'refimgs', img_name)
+    img = cv2.imread(img_path)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    for config in level_configs:
+        distorted = apply_distortion_pipeline(img, config)
+        result.append(distorted)
+    return result
+
+def experiment2(img_name, dataset_path, level_configs, contrique):
+    distorted_level_img = generate_distortion_levels(img_name, dataset_path, level_configs)
+    num_levels = len(level_configs)
+    cam_generator = FeatureGradCAM(contrique)
+
+    fig, axes = plt.subplots(2, num_levels, figsize=(4*num_levels, 7))
+    axes = axes.flatten()
+    scores = []
+
+    for i in range(num_levels):
+        dist_img = Image.fromarray(distorted_level_img[i])
+
+        _, img_heatmap = cam_generator.generate(image = dist_img, isImage=True)
+        img_gradCam = gradcam_output(dist_img, img_heatmap)
+        score = contrique.predict(dist_img)
+        scores.append(score)
+
+        axes[(i * 2)].imshow(dist_img)
+        axes[(i * 2)].set_title(f"Level:{i} | Score:{score:.2f}")
+        axes[(i * 2)].axis('off')
+        axes[(i * 2) + 1].imshow(img_gradCam)
+        axes[(i * 2) + 1].set_title(f" Level:{i} | Grad_Cam")
+        axes[(i * 2) + 1].axis('off')
+
+    plt.suptitle(f"Stress Testing for {img_name}")
+    plt.tight_layout()
+    plt.show()
+    return scores
+
+    
