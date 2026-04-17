@@ -1,6 +1,8 @@
 # Cell 2: Custom Feature-Based Grad-CAM for CONTRIQUE
 import torch
 import torch.nn.functional as F
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -202,3 +204,28 @@ def compare_distortion_exp3(img_name, blur_df, jpeg_df):
     plt.suptitle(f"Distortion Sensitivity for {img_name}")
     plt.tight_layout()
     plt.show()
+
+class KonIQDataset(Dataset):
+    def __init__(self, df, image_dir):
+        self.df = df
+        self.image_dir = image_dir
+        self.transform = transforms.ToTensor()
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        row = self.df.iloc[idx]
+        img_name = row['image_name']
+        true_score = row['MOS']
+        img_path = os.path.join(self.image_dir, img_name)
+
+        # Load and resize exactly how the CONTRIQUE wrapper does it
+        image = Image.open(img_path).convert('RGB')
+        w, h = image.size
+        image_2 = image.resize((w // 2, h // 2), Image.BICUBIC)
+        
+        img_t = self.transform(image)
+        img_2_t = self.transform(image_2)
+        
+        return img_t, img_2_t, true_score, img_name
