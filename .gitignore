@@ -15,3 +15,4 @@ env/
 venv/
 
 data/*
+reiqa/ReIQA/savedCheckpoint/*
