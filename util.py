@@ -120,13 +120,14 @@ def experiment1(img_name, dist, dist_map, dataset_path, contrique):
 
     sorted_dist_image_list = sorted(dist_map[img_name], key=lambda x: x[1])
     sorted_dist_image_list = [x for x in sorted_dist_image_list if x[1] != 0.0]
-    fig, axes = plt.subplots(2, len(sorted_dist_image_list) + 1, figsize=(22, 7))
+    fig, axes = plt.subplots(2, 4, figsize=(11, 6))
     axes = axes.flatten()
 
     ref_img_path = os.path.join(dataset_path, 'refimgs', img_name)
     ref_img, ref_img_heatmap = cam_generator.generate(ref_img_path)
     ref_gradCam = gradcam_output(ref_img, ref_img_heatmap)
     score = contrique.predict(ref_img)
+    score_dict = {'scores': [score], 'strengths': [0.0]}
 
     axes[0].imshow(ref_img)
     axes[0].set_title(f"Org (Score: {score:.2f})")
@@ -136,6 +137,14 @@ def experiment1(img_name, dist, dist_map, dataset_path, contrique):
     axes[1].axis('off')
 
     for idx, (dist_img, strength) in enumerate(sorted_dist_image_list):
+        img_path = os.path.join(dataset_path, dist, dist_img)
+        img, img_heatmap = cam_generator.generate(img_path)
+        score = contrique.predict(img)
+        score_dict['scores'].append(score)
+        score_dict['strengths'].append(strength)
+
+    temp = sorted_dist_image_list[:1] + sorted_dist_image_list[-2:]
+    for idx, (dist_img, strength) in enumerate(temp):
         img_path = os.path.join(dataset_path, dist, dist_img)
         img, img_heatmap = cam_generator.generate(img_path)
         gradCam = gradcam_output(img, img_heatmap)
@@ -151,7 +160,7 @@ def experiment1(img_name, dist, dist_map, dataset_path, contrique):
     plt.suptitle(f"Distortion: {dist}", fontsize=20, fontweight='bold')
     plt.tight_layout()
     plt.show()
-    return 
+    return score_dict
 
 def experiment3_gradCam(top_k_df, dataset_path, contrique, title, isDistortion=False):
     cam_generator = FeatureGradCAM(contrique)
@@ -177,6 +186,24 @@ def experiment3_gradCam(top_k_df, dataset_path, contrique, title, isDistortion=F
     plt.tight_layout()
     plt.show()
     return 
+
+def compare_distortion_exp1(img_name, s_cont, s_reiqa):
+    plt.figure(figsize=(12, 5))
+
+    for i, d in enumerate(s_cont.keys()):
+        plt.subplot(1, 3, i+1)
+        # radii, new_scores, baseline_score = blur_df.loc[blur_df['image_name'] == img_name, ['strength', 'new_score', 'baseline_score']].values.T.tolist()
+        plt.plot(s_cont[d]['strengths'], s_cont[d]['scores'], marker='o', label='CONTRIQUE')
+        plt.plot(s_reiqa[d]['strengths'], s_reiqa[d]['scores'], marker='o', label='RE-IQA')
+        # plt.axhline(y=baseline_score[0], color='r', linestyle='--', label='Baseline')
+        plt.xlabel('Distortion Strength')
+        plt.ylabel('Predicted Score')
+        plt.title(f'Sensitivity to {d}')
+        plt.legend()
+
+    plt.suptitle(f"Comparision for {img_name}")
+    plt.tight_layout()
+    plt.show()
 
 def compare_distortion_exp3(img_name, blur_df, jpeg_df):
     plt.figure(figsize=(12, 5))
