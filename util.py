@@ -299,7 +299,7 @@ def experiment2(img_name, dataset_path, level_configs, contrique):
     num_levels = len(level_configs)
     cam_generator = FeatureGradCAM(contrique)
 
-    fig, axes = plt.subplots(2, num_levels, figsize=(4*num_levels, 7))
+    fig, axes = plt.subplots(1, num_levels, figsize=(4*num_levels, 5))
     axes = axes.flatten()
     scores = []
 
@@ -311,12 +311,12 @@ def experiment2(img_name, dataset_path, level_configs, contrique):
         score = contrique.predict(dist_img)
         scores.append(score)
 
-        axes[(i * 2)].imshow(dist_img)
-        axes[(i * 2)].set_title(f"Level:{i} | Score:{score:.2f}")
-        axes[(i * 2)].axis('off')
-        axes[(i * 2) + 1].imshow(img_gradCam)
-        axes[(i * 2) + 1].set_title(f" Level:{i} | Grad_Cam")
-        axes[(i * 2) + 1].axis('off')
+        axes[i].imshow(dist_img)
+        axes[i].set_title(f"Level:{i} | Score:{score:.2f}")
+        axes[i].axis('off')
+        # axes[(i * 2) + 1].imshow(img_gradCam)
+        # axes[(i * 2) + 1].set_title(f" Level:{i} | Grad_Cam")
+        # axes[(i * 2) + 1].axis('off')
 
     plt.suptitle(f"Stress Testing for {img_name}")
     plt.tight_layout()
