@@ -1,0 +1,6 @@
+Download the following datasets here:
+koniq10k
+live-iqa (rename folder as live)
+live-challenge (rename folder as live_challenge)
+
+The datasets can be found at: https://huggingface.co/datasets/chaofengc/IQA-PyTorch-Datasets/tree/main

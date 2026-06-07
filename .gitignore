@@ -1,0 +1,19 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pth
+*.pt
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints
+
+# Virtual Environments
+.env
+.venv
+env/
+venv/
+
+data/koniq10k
+data/live
+data/live_challenge
